@@ -1,0 +1,18 @@
+# General information for model training
+"annot_path":  "/home/okamoto/JpGU2022/data/cyo/2019_ground_cat3.csv"
+"label_path": "/home/okamoto/JpGU2022/data/cyo/classes_3.txt"
+"image_dir": "/home/okamoto/JpGU2022/data/cyo/2019_train_ground"
+"model_name": "efficientnet_b4"
+"val_ratio": 0.2
+"batch_size": 10
+"num_workers": 10
+"device": "cuda"
+"region": "ground"
+"ridge": 786
+"num_split": [4,3]
+# Hyperparameters of the model
+"n_layers": 5
+"h_dims": 512
+"batch_norm": True
+"drop_out": 0.5
+"learning_rate": 0.0005
