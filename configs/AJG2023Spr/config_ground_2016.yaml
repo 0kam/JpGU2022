@@ -1,0 +1,19 @@
+# General information for model training
+"annot_path":  "data/cyo/2016/labeled_CYO_2016_ground.csv"
+"label_path": "data/cyo/classes_3.txt"
+"image_dir": "data/cyo/2016/train_ground"
+"model_name": "efficientnet_b4"
+"val_ratio": 0.2
+"batch_size": 10
+"num_workers": 10
+"device": "cuda"
+"region": "ground"
+"ridge": 786
+"num_split": [4,4]
+# Hyperparameters of the model
+"n_layers": 1
+"h_dims": 64
+"batch_norm": True
+"drop_out": 0.5
+"learning_rate": 0.0005
+"freeze_base": True

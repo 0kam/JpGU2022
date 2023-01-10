@@ -7,6 +7,7 @@ import re
 import os
 import random
 import shutil
+import numpy as np
 from pathlib import Path
 from torch.utils.data import Dataset
 import pandas as pd
@@ -124,17 +125,24 @@ class PatchedImageDataset(Dataset):
     def __init__(self, annot_path, label_path, image_dir, img_shape=(380, 380)):
         self.annot = pd.read_csv(annot_path)
         self.image_dir = image_dir
-        self.image_dirs = sorted(glob(self.image_dir+"/*"))
+        image_dirs = sorted(glob(self.image_dir+"/*"))
+        self.image_dirs = []
+        for d in image_dirs:
+            t = int(d[-7:-5]) # 時間
+            if (t > 6) and (t < 17):
+                self.image_dirs.append(d)
         self.len = len(self.image_dirs)
         with open(label_path, 'r') as f:
             labels = f.readlines()
             labels = [l.replace("\n", "") for l in labels]
             labels = [int(l) for l in labels]
-        #self.le = preprocessing.LabelEncoder()
-        #self.le.fit_transform(labels)
-        #self.classes = self.le.classes_
         self.classes = labels
-        self.targets = self.annot["label"].values
+        self.targets = []
+        for d in self.image_dirs:
+            image_name = Path(d).stem
+            a = self.annot[self.annot['filename'].str.contains(image_name)]["label"].values
+            self.targets.append(torch.Tensor(a).int())
+        self.targets = torch.concatenate(self.targets)
         self.tf = transforms.Compose(
                 [
                     transforms.Resize(img_shape),

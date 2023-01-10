@@ -19,6 +19,7 @@ from scripts.utils import tile_image
 from glob import glob
 import pandas as pd
 import os
+import shutil
 
 @dataclass(init=True)
 class Config:
@@ -40,20 +41,27 @@ class Config:
     batch_norm: bool
     drop_out: float
     learning_rate: float
+    freeze_base: bool
 
 class DoubleCNN(nn.Module):
-    def __init__(self, model_name, y_dims, n_layers, h_dims, batch_norm, drop_out):
+    def __init__(self, model_name, y_dims, n_layers, h_dims, batch_norm, drop_out, freeze = False):
         super().__init__()
         self.modelp = getattr(models, model_name)(pretrained=True)
         self.modela = getattr(models, model_name)(pretrained=True)
+        if freeze:
+            for model in [self.modela, self.modelp]:
+                for param in model.parameters():
+                    param.requires_grad = False
         if "resnet" in model_name:
-            n = self.modelp.fc.out_features
+            self.modelp.fc = nn.Linear(self.modelp.fc.in_features, h_dims)
+            self.modela.fc = nn.Linear(self.modela.fc.in_features, h_dims)
         elif "efficientnet" in model_name:
-            n = self.modelp.classifier[1].out_features
+            self.modelp.classifier[1] = nn.Linear(self.modelp.classifier[1].in_features, h_dims)
+            self.modela.classifier[1] = nn.Linear(self.modela.classifier[1].in_features, h_dims)
         if n_layers == 1:
-            self.fc = nn.Linear(2*n, y_dims)
+            self.fc = nn.Linear(h_dims, y_dims)
         else:
-            self.fc = [nn.Linear(2*n, h_dims)]
+            self.fc = [nn.Linear(h_dims, h_dims)]
             for i in range(n_layers-1):
                 self.fc.append(nn.Linear(h_dims, h_dims))
                 self.fc.append(nn.GELU())
@@ -66,12 +74,14 @@ class DoubleCNN(nn.Module):
     def forward(self, x_patch, x_all):
         hp = self.modelp(x_patch)
         ha = self.modela(x_all)
-        h = torch.cat([hp, ha], 1)
+        #h = torch.cat([hp, ha], 1)
+        h = hp + ha
         return self.fc(h)
 
 class DoubleCNNClassifier:
     def __init__(self, config_path):
         # Loading configuration file
+        self.config_path = config_path
         with open(config_path) as file:
             self.c = Config(**yaml.safe_load(file))
         # Setting input size of each CNN
@@ -91,6 +101,12 @@ class DoubleCNNClassifier:
             self.input_size = (528, 528)
         elif self.c.model_name == "efficientnet_b7":
             self.input_size = (600, 600)
+        elif self.c.model_name == "efficientnet_v2_s":
+            self.input_size = (384, 384)
+        elif self.c.model_name == "efficientnet_v2_m":
+            self.input_size = (480, 480)
+        elif self.c.model_name == "efficientnet_v2_l":
+            self.input_size = (480, 480)
         elif "resnet" in self.c.model_name:
             self.input_size = (224, 224)
         else:
@@ -107,7 +123,7 @@ class DoubleCNNClassifier:
         self.classes = self.ds.classes
         # Constructing models
         self.model = DoubleCNN(self.c.model_name, len(self.classes), self.c.n_layers, \
-            self.c.h_dims, self.c.batch_norm, self.c.drop_out)
+            self.c.h_dims, self.c.batch_norm, self.c.drop_out, self.c.freeze_base)
         self.model.to(self.c.device)
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = optim.Adam(self.model.parameters(), lr = self.c.learning_rate)
@@ -163,11 +179,12 @@ class DoubleCNNClassifier:
         except AttributeError:
             dt_now = datetime.datetime.now()
             exp_time = dt_now.strftime('%Y%m%d_%H_%M_%S')
-            self.out_dir = "./runs/" + self.c.model_name + "_" + exp_time
+            self.out_dir = "./runs/" + self.c.model_name + "_" + self.c.region + "_" + exp_time
         if fold is None:
             writer = SummaryWriter(self.out_dir)
         else:
             writer = SummaryWriter(self.out_dir + "/fold_" + str(fold))
+        shutil.copy(self.config_path, self.out_dir + "/" + "config.yaml")
         self.best_loss = 9999
         for epoch in range(epochs):
             train_loss = self._train(epoch)
@@ -286,3 +303,35 @@ class DoubleCNNClassifier:
             self.model.load_state_dict(torch.load(path, map_location=torch.device("cpu")))
         else:
             self.model.load_state_dict(torch.load(path))
+    
+    def test(self, image_dir, annot_path, result_yaml_path=None):
+        self.test_ds = PatchedImageDataset(annot_path, self.c.label_path, image_dir, self.input_size)
+        self.test_loader = DataLoader(self.test_ds, batch_size=self.c.batch_size, \
+                num_workers=1, shuffle=False)
+        self.model.eval()
+        running_loss = 0.0
+        ys = []
+        pred_ys = []
+        for x_patch, x_all, y in tqdm(self.test_loader):
+            x_patch = x_patch.to(self.c.device)
+            x_all = x_all.to(self.c.device)
+            y = y.to(self.c.device).to(torch.long).squeeze()
+            
+            with torch.no_grad():
+                y2 = self.model(x_patch, x_all)
+            loss = self.criterion(y2, y)
+            running_loss += loss
+            _, pred = torch.max(y2, 1)
+            ys.append(y.detach().cpu())
+            pred_ys.append(pred.detach().cpu())
+            
+        running_loss = running_loss / len(self.test_loader.dataset)
+        ys = torch.cat(ys)
+        pred_ys = torch.cat(pred_ys)
+        res = classification_report(ys, pred_ys, output_dict=True)
+        print("Val_loss: {:.4f}".format(running_loss))
+        print("Val_f1: {:.4f}".format(res["macro avg"]["f1-score"]))
+        if result_yaml_path is not None:
+            with open(result_yaml_path, "w") as f:
+                yaml.dump(res, f)
+        return running_loss, res

@@ -1,0 +1,31 @@
+'0':
+  f1-score: 0.9889541715628672
+  precision: 0.9882573978393612
+  recall: 0.9896519285042333
+  support: 2126
+'1':
+  f1-score: 0.9112709832134293
+  precision: 0.9090909090909091
+  recall: 0.9134615384615384
+  support: 416
+'2':
+  f1-score: 0.9837535014005602
+  precision: 0.9865168539325843
+  recall: 0.9810055865921787
+  support: 895
+'3':
+  f1-score: 1.0
+  precision: 1.0
+  recall: 1.0
+  support: 275
+accuracy: 0.9797952586206896
+macro avg:
+  f1-score: 0.9709946640442142
+  precision: 0.9709662902157136
+  recall: 0.9710297633894875
+  support: 3712
+weighted avg:
+  f1-score: 0.9798126835972369
+  precision: 0.9798355684962184
+  recall: 0.9797952586206896
+  support: 3712

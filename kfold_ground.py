@@ -1,3 +1,5 @@
 from scripts.doublecnn import DoubleCNNClassifier
-model_ground = DoubleCNNClassifier("/home/okamoto/JpGU2022/scripts/config_ground.yaml")
-model_ground.kfold(200, 5)
+model = DoubleCNNClassifier("configs/AJG2023Spr/config_ground_2016.yaml")
+model.kfold(30, 5)
+model = DoubleCNNClassifier("configs/AJG2023Spr/config_ground_2020.yaml")
+model.kfold(30, 5)

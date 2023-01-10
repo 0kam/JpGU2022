@@ -1,7 +1,7 @@
 # General information for model training
-"annot_path":  "/home/okamoto/JpGU2022/data/cyo/2019_ground_cat3.csv"
-"label_path": "/home/okamoto/JpGU2022/data/cyo/classes_3.txt"
-"image_dir": "/home/okamoto/JpGU2022/data/cyo/2019_train_ground"
+"annot_path":  "data/cyo/2019/ground_cat3.csv"
+"label_path": "data/cyo/2019/classes_3.txt"
+"image_dir": "data/cyo/2019/train_ground"
 "model_name": "efficientnet_b4"
 "val_ratio": 0.2
 "batch_size": 10
