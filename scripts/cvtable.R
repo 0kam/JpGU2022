@@ -2,7 +2,7 @@ library(tidyverse)
 library(gtsummary)
 
 df <- read_csv(
-  "runs/efficientnet_b4_20220516_18_00_21/staritfied_cv.csv", # ground
+  "runs/efficientnet_b4_ground_20230111_01_01_21/staritfied_cv.csv", # ground
   col_select = c(metrics, class, value, fold))
 
 theme_gtsummary_mean_sd()
